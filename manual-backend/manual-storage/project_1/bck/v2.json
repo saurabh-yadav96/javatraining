@@ -1,0 +1,11 @@
+{
+    "title": "User Manual: Secure User Login Feature",
+    "introduction": "The FRS (Flexible Registration System) is a secure authentication feature. It enables users to access systems safely and efficiently.",
+    "purpose": "The purpose of FRS is to provide a reliable and secure login process for users. It allows users to authenticate using their credentials, protecting their accounts and sensitive information.",
+    "steps": [
+        "Click ec_ms_moefcc_ind1@mailinator.com button",
+        "Click button",
+        "Click LOGIN",
+        "Enter password"
+    ]
+}

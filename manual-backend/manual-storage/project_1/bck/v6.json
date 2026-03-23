@@ -1,0 +1,9 @@
+{
+    "title": "User Manual: Secure User Login System",
+    "introduction": "The FRS (Flexible Registration System) is a secure authentication feature. It enables users to access systems safely and efficiently.",
+    "purpose": "The purpose of FRS is to provide a reliable and secure login process for users. It allows users to authenticate using their credentials, protecting their accounts and sensitive information.",
+    "steps": [
+        "Click Processed Proposal History button",
+        "Click Back button"
+    ]
+}

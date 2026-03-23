@@ -1,0 +1,11 @@
+{
+    "title": "User Manual: Application Process",
+    "introduction": "",
+    "purpose": "",
+    "prerequisites": "",
+    "steps": [
+        "Step 1: Initiating the Login Process<br/>Explanation: Once you have entered your password, managed its visibility, and completed the Captcha challenge, you need to select the LOGIN option to initiate the login process. This action will submit your credentials for verification, and the system will authenticate your identity.",
+        "Step 2: Submitting Credentials for Verification<br/>Explanation: After selecting the LOGIN option, the system will process your request. The system will verify your credentials to ensure they match the ones stored in the database. This step is crucial in ensuring the security and integrity of your account.",
+        "Step 3: Authenticating Identity and Granting Access<br/>Explanation: If your credentials are valid, the system will authenticate your identity and grant you access to your account. This means that you will be able to view and manage your account information, settings, and other features associated with your account."
+    ]
+}
