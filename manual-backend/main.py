@@ -7,17 +7,21 @@ from groq import Groq
 from fastapi import UploadFile, File
 from PyPDF2 import PdfReader
 from docx import Document
+from reportlab.platypus import PageBreak
+from reportlab.pdfgen import canvas
+from datetime import datetime
 
 import os
 import json
 import base64
+import asyncio
 
 # PDF
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet
 
 # ================= INIT =================
-client = Groq(api_key="")
+client = Groq(api_key="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")
 
 app = FastAPI(title="Manual Generator with Screenshots")
 
@@ -66,17 +70,22 @@ def generate_title(frs: Optional[str]) -> str:
         return "User Manual"
 
     prompt = f"""
-Generate a short title (max 5 words).
+Generate a short title (max 5 words) for a user manual based on the FRS below.
+Respond with only the title, no punctuation, no extra text.
 
 FRS:
 {frs}
 
-Example:
+Example output:
 Login Process
 """
-
     title = call_groq(prompt)
-    return f"User Manual: {title}"
+    title = " ".join(title.strip().split())          # collapse whitespace/newlines
+    words = title.split()
+    if len(words) > 5:
+        title = " ".join(words[:5])                  # hard-enforce 5-word limit
+
+    return f"User Manual: {title}" if title else "User Manual"
 
 
 def generate_intro_purpose(frs: Optional[str]) -> Dict:
@@ -111,31 +120,50 @@ Purpose: ...
 
 def generate_steps(formatted_steps: str) -> List[str]:
     prompt = f"""
-You are a professional technical writer.
+You are a senior technical writer at a software company.
+Your job is to write one section of a user manual that real people will read.
 
-Convert the following actions into structured user manual steps.
+Each step should:
+- Open with a short, action-oriented heading (e.g. "Updating Your File Number", not "Step 1: Initiating File Number Update")
+- Follow with 2–3 sentences that feel like a knowledgeable colleague guiding the user
+- Mention what the user does AND what they will see or experience afterward
+- Use natural English — write the way a human explains something to another human
+- Never use phrases like: "initiate", "execute", "proceed to", "click the button", "perform the action"
+- Prefer specific, concrete language: "select your file from the list" over "choose the appropriate item"
 
-Rules:
-- Each step must have a clear title and explanation
-- Explain what user should do
-- Explain what happens after action
-- Use professional tone
-- Avoid robotic phrases like "click button"
+Tone reference:
+Bad:  "Step 1: Initiating File Number Update. Click the update button to initiate the file number update process."
+Good: "Updating Your File Number — Find the file you want to change and select Edit from the options next to it.
+       A small panel will open on the right where you can type in the new number.
+       Once you save, the change takes effect immediately across the system."
 
-Actions:
+Actions to convert:
 {formatted_steps}
 
-Format:
-Step 1: Title
-Description: ...
+Output format (repeat for each step, no extra text):
+Step N: <short action-oriented heading>
+Description: <2–3 natural, human sentences>
 """
 
     output = call_groq(prompt)
 
     steps = []
+    current_step = ""
+
     for line in output.split("\n"):
+        line = line.strip()
+
         if line.lower().startswith("step"):
-            steps.append(line.split(":", 1)[-1].strip())
+            if current_step:
+                steps.append(current_step.strip())
+            current_step = line  # start new step
+
+        elif line.lower().startswith("description"):
+            desc = line.split(":", 1)[-1].strip()
+            current_step += f"\n{desc}"
+
+    if current_step:
+        steps.append(current_step.strip())
 
     return steps
 
@@ -187,12 +215,24 @@ def save_screenshot(image_base64, project_id, version, step_index):
 
     return file_path
 
+def add_page_number(canvas, doc):
+    page_num = canvas.getPageNumber()
+    text = f"Page {page_num}"
 
+    canvas.setFont("Helvetica", 9)
+    canvas.drawRightString(550, 20, text)
+def add_page_number(canvas, doc):
+    if doc.page > 1:
+        page_num = canvas.getPageNumber()
+        text = f"Page {page_num}"
+        canvas.setFont("Helvetica", 9)
+        canvas.drawRightString(550, 20, text)
 # ================= PDF GENERATION =================
 
 def generate_pdf(project_id, version, data, image_paths):
 
     print(" generate_pdf called")
+    current_date = datetime.now().strftime("%d %b %Y")
 
     folder = os.path.join(BASE_DIR, f"project_{project_id}")
     os.makedirs(folder, exist_ok=True)
@@ -203,9 +243,22 @@ def generate_pdf(project_id, version, data, image_paths):
     content = []
 
     try:
-        # Title
+        # ================= COVER PAGE =================
+        content.append(Spacer(1, 100))
+
         content.append(Paragraph(data.get("title", "User Manual"), styles['Title']))
-        content.append(Spacer(1, 10))
+        content.append(Spacer(1, 30))
+
+        content.append(Paragraph("Generated User Manual", styles['Heading2']))
+        content.append(Spacer(1, 20))
+
+        #Paragraph(f"Generated on: {current_date}", styles['Normal'])
+        content.append(Paragraph(f"Generated on: {current_date}", styles['Normal']))
+
+        #content.append(Paragraph("Generated on: " + str(os.popen('date').read()), styles['Normal']))
+
+        # Move to next page
+        content.append(PageBreak())
 
         # Introduction
         if data.get("introduction"):
@@ -240,12 +293,19 @@ def generate_pdf(project_id, version, data, image_paths):
                     except Exception as e:
                         print(" Image failed:", e)
 
-            content.append(Paragraph(f"Step {i+1}: {step}", styles['BodyText']))
+            step_parts = step.split("\n", 1)
+
+            title = step_parts[0]
+            description = step_parts[1] if len(step_parts) > 1 else ""
+
+            content.append(Paragraph(title, styles['Heading3']))
+            content.append(Paragraph(description, styles['BodyText']))
+            content.append(Spacer(1, 10))
             content.append(Spacer(1, 10))
 
         #  CREATE PDF HERE
         doc = SimpleDocTemplate(pdf_path)
-        doc.build(content)
+        doc.build(content, onFirstPage=add_page_number, onLaterPages=add_page_number)
 
         print(" PDF CREATED:", pdf_path)
 
@@ -347,53 +407,27 @@ def extract_text(file: UploadFile):
 def extract_sections_from_frs(frs_text: str):
 
     prompt = f"""
-You are a professional technical writer creating a user manual for end users.
+You are a professional technical writer.
 
-Based on the following FRS content, generate user-friendly documentation sections.
-
-Focus on:
-- Making it easy for a non-technical user to understand
-- Explaining purpose in a practical way
-- Avoid copying exact lines from FRS
-- Write as if guiding a real user
-
-FRS Content:
+FRS:
 {frs_text}
 
-Generate the following sections:
+Generate:
 
 Title:
-- Short and meaningful (max 6 words)
-
 Introduction:
-- 3–4 lines
-- Explain what the application does in simple terms
-- Focus on user benefit
-
 Purpose:
-- 2–3 lines
-- Explain why user would use this feature/system
-
 Prerequisites:
-- Bullet points
-- Mention things user should have before starting (login, access, data, etc.)
 
-Rules:
-- Use clear and natural language
-- Avoid technical jargon
-- Do not sound like AI or documentation template
-- Make it feel like a real product manual
-
-Format strictly as:
-Title: ...
-Introduction: ...
-Purpose: ...
-Prerequisites:
-- ...
-- ...
+STRICT RULES:
+- Always use exact labels: Title:, Introduction:, Purpose:, Prerequisites:
+- Each section must have content
+- No markdown, no bold (**), no extra formatting
 """
 
     output = call_groq(prompt)
+
+    print("🔥 LLM OUTPUT:\n", output)  # DEBUG
 
     result = {
         "title": "",
@@ -402,15 +436,42 @@ Prerequisites:
         "prerequisites": ""
     }
 
+    current = None
+
     for line in output.split("\n"):
-        if line.lower().startswith("title"):
+        line = line.strip()
+
+        if not line:
+            continue
+
+        lower = line.lower()
+
+        if lower.startswith("title"):
+            current = "title"
             result["title"] = line.split(":",1)[-1].strip()
-        elif line.lower().startswith("introduction"):
+            continue
+
+        elif lower.startswith("introduction"):
+            current = "introduction"
             result["introduction"] = line.split(":",1)[-1].strip()
-        elif line.lower().startswith("purpose"):
+            continue
+
+        elif lower.startswith("purpose"):
+            current = "purpose"
             result["purpose"] = line.split(":",1)[-1].strip()
-        elif line.lower().startswith("prerequisites"):
-            result["prerequisites"] = line.split(":",1)[-1].strip()
+            continue
+
+        elif lower.startswith("prerequisites"):
+            current = "prerequisites"
+            continue
+
+        # 👇 MULTI-LINE SUPPORT (IMPORTANT)
+        if current:
+            result[current] += " " + line
+
+    # clean spaces
+    for key in result:
+        result[key] = result[key].strip()
 
     return result
 
@@ -466,7 +527,7 @@ async def generate_manual_from_frs(
 
     # 7. Generate PDF
     pdf_path = generate_pdf(project_id, version, manual_data, image_paths)
-
+    #pdf_path = await asyncio.to_thread(generate_pdf, project_id, version, manual_data, image_paths)
     return {
         "status": "success",
         "pdf_path": pdf_path

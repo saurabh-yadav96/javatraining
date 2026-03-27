@@ -27,33 +27,51 @@ document.getElementById("generate").onclick = () => {
             return;
         }
 
+        // ✅ CLEAN STEPS (SAFE)
+        const cleanedSteps = steps.map(s => ({
+            type: s.type,
+            text: s.text,
+            field: s.field,
+            value: s.value,
+            screenshot: s.screenshot || null
+        }));
+
+        console.log("📤 Sending Steps:", cleanedSteps);
+
         const formData = new FormData();
         formData.append("file", fileInput.files[0]);
-        formData.append("steps", JSON.stringify(steps));
+        formData.append("steps", JSON.stringify(cleanedSteps));
 
-        const res = await fetch("http://127.0.0.1:8000/generate-manual-from-frs", {
-            method: "POST",
-            body: formData
-        });
+        try {
+            const res = await fetch("http://127.0.0.1:8000/generate-manual-from-frs", {
+                method: "POST",
+                body: formData
+            });
 
-        if (!res.ok) {
-            alert("API failed: " + res.status);
-            return;
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error("❌ API Error:", errorText);
+                alert("API failed: " + errorText);
+                return;
+            }
+
+            const data = await res.json();
+
+            console.log("✅ API response:", data);
+
+            alert("Manual generated!");
+
+            const url = `http://127.0.0.1:8000/download/pdf/1/${data.version}`;
+
+            chrome.downloads.download({
+                url: url,
+                filename: `manual_v${data.version}.pdf`,
+                saveAs: true
+            });
+
+        } catch (err) {
+            console.error("❌ Fetch Error:", err);
+            alert("Request failed");
         }
-
-        const data = await res.json();
-
-        console.log("API response:", data);
-
-        alert("Manual generated!");
-
-        // ✅ CORRECT DOWNLOAD
-        const url = `http://127.0.0.1:8000/download/pdf/1/${data.version}`;
-
-        chrome.downloads.download({
-            url: url,
-            filename: `manual_v${data.version}.pdf`,
-            saveAs: true
-        });
     });
 };

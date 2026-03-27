@@ -4,17 +4,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     if (msg.action === "CAPTURE_SCREENSHOT") {
 
-        chrome.tabs.captureVisibleTab(null, {}, function (image) {
+        // ✅ COMPRESS IMAGE HERE
+        chrome.tabs.captureVisibleTab(null, {
+            format: "jpeg",   // 🔥 change from PNG → JPEG
+            quality: 50       // 🔥 compress (0–100)
+        }, function (image) {
 
             const stepData = {
                 type: msg.step.type,
                 text: msg.step.text,
-                screenshot: image   
+                screenshot: image
             };
 
             steps.push(stepData);
 
-            console.log("Saved step:", stepData);
+            console.log("✅ Saved step:", stepData);
         });
     }
 
