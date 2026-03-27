@@ -1,15 +1,12 @@
 {
-    "title": "User Manual: PARIVESH Forest Clearance Mobile Application",
-    "introduction": "The PARIVESH Forest Clearance Mobile Application is a mobile extension of the existing PARIVESH web portal, aiming to enhance accessibility, transparency, and efficiency in the forest clearance workflow.",
-    "purpose": "To define the functional and non-functional requirements for the development of the PARIVESH Forest Clearance Mobile Application.",
+    "title": "User Manual: Forest Clearance Mobile App",
+    "introduction": "The Forest Clearance Mobile App is designed to help you access and manage forest clearance proposals on-the-go. With this app, you can easily track the status of proposals, monitor timelines, and take timely actions. This app is an extension of the existing PARIVESH web portal, making it easier for you to stay updated and make informed decisions.",
+    "purpose": "You'll use this app to stay informed about new proposals, track pending actions, and receive alerts about upcoming deadlines, all in one convenient place.",
     "prerequisites": "",
     "steps": [
-        "Click Login Id button",
-        "Click PARIVESH",
-        "Enter Login Id",
-        "Enter Password",
-        "Click visibility",
-        "Click Enter Captcha",
-        "Click LOGIN button"
+        "Select Date Range",
+        "View Submission Details",
+        "Update File Reference",
+        "Confirm Updates"
     ]
 }

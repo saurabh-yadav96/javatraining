@@ -1,0 +1,20 @@
+app/
+│
+├── main.py                  # FastAPI entry
+├── routes/
+│   └── generate.py         # API endpoint
+│
+├── services/
+│   ├── extractor.py        # PDF/image text extraction
+│   ├── image_processor.py  # Screenshot handling
+│   ├── chunker.py          # Split content
+│   ├── prompt_builder.py   # Build AI prompts
+│   ├── llm_service.py      # Call LLM (OpenAI/Ollama)
+│   ├── formatter.py        # Make output human-like
+│   └── document_builder.py # Create final PDF/DOC
+│
+├── templates/
+│   └── manual_template.md  # Structure template
+│
+└── utils/
+    └── helpers.py

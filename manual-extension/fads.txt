@@ -88,8 +88,8 @@ FRS:
 {frs}
 
 Generate:
-Introduction (max 5 lines)
-Purpose (max 4 lines)
+Introduction (max 2 lines)
+Purpose (max 2 lines)
 
 Format:
 Introduction: ...
@@ -111,23 +111,19 @@ Purpose: ...
 
 def generate_steps(formatted_steps: str) -> List[str]:
     prompt = f"""
-You are a professional technical writer.
-
-Convert the following actions into structured user manual steps.
-
-Rules:
-- Each step must have a clear title and explanation
-- Explain what user should do
-- Explain what happens after action
-- Use professional tone
-- Avoid robotic phrases like "click button"
+Convert actions into steps.
 
 Actions:
 {formatted_steps}
 
+Rules:
+- Each step max 12 words
+- Use UI language
+- No explanation
+
 Format:
-Step 1: Title
-Description: ...
+Step 1: ...
+Step 2: ...
 """
 
     output = call_groq(prompt)
@@ -191,66 +187,59 @@ def save_screenshot(image_base64, project_id, version, step_index):
 # ================= PDF GENERATION =================
 
 def generate_pdf(project_id, version, data, image_paths):
-
-    print(" generate_pdf called")
-
+    
     folder = os.path.join(BASE_DIR, f"project_{project_id}")
     os.makedirs(folder, exist_ok=True)
 
     pdf_path = os.path.join(folder, f"v{version}.pdf")
 
+    doc = SimpleDocTemplate(pdf_path)
     styles = getSampleStyleSheet()
+
     content = []
 
-    try:
-        # Title
-        content.append(Paragraph(data.get("title", "User Manual"), styles['Title']))
+    # Title
+    content.append(Paragraph(f"<b>{data['title']}</b>", styles['Title']))
+    content.append(Spacer(1, 12))
+    
+# Prerequisites
+    if data.get("prerequisites"):
+        content.append(Paragraph("<b>Prerequisites</b>", styles['Heading2']))
+        content.append(Paragraph(data["prerequisites"], styles['BodyText']))
         content.append(Spacer(1, 10))
 
-        # Introduction
-        if data.get("introduction"):
-            content.append(Paragraph("Introduction", styles['Heading2']))
-            content.append(Paragraph(data["introduction"], styles['BodyText']))
-
-        # Purpose
-        if data.get("purpose"):
-            content.append(Paragraph("Purpose", styles['Heading2']))
-            content.append(Paragraph(data["purpose"], styles['BodyText']))
-
-        # Prerequisites
-        if data.get("prerequisites"):
-            content.append(Paragraph("Prerequisites", styles['Heading2']))
-            content.append(Paragraph(data["prerequisites"], styles['BodyText']))
-
+    # Introduction
+    if data["introduction"]:
+        content.append(Paragraph("<b>Introduction</b>", styles['Heading2']))
+        content.append(Paragraph(data["introduction"], styles['BodyText']))
         content.append(Spacer(1, 10))
 
-        # Steps
-        content.append(Paragraph("Steps", styles['Heading2']))
+    # Purpose
+    if data["purpose"]:
+        content.append(Paragraph("<b>Purpose</b>", styles['Heading2']))
+        content.append(Paragraph(data["purpose"], styles['BodyText']))
+        content.append(Spacer(1, 10))
 
-        for i, step in enumerate(data.get("steps", [])):
+    # Steps with screenshots
+    content.append(Paragraph("<b>Steps</b>", styles['Heading2']))
 
-            # Safe image handling
-            if i < len(image_paths):
-                img_path = image_paths[i]
+    for i, step in enumerate(data["steps"], 1):
 
-                if img_path and os.path.exists(img_path):
-                    try:
-                        content.append(Image(img_path, width=300, height=180))
-                        content.append(Spacer(1, 5))
-                    except Exception as e:
-                        print(" Image failed:", e)
+        # Add screenshot
+        if i-1 < len(image_paths) and image_paths[i-1]:
+            try:
+                img = Image(image_paths[i-1], width=350, height=200)
+                content.append(img)
+                content.append(Spacer(1, 5))
+            except Exception as e:
+                print("Image error:", e)
 
-            content.append(Paragraph(f"Step {i+1}: {step}", styles['BodyText']))
-            content.append(Spacer(1, 10))
+        content.append(Paragraph(f"Step {i}: {step}", styles['BodyText']))
+        content.append(Spacer(1, 10))
 
-        #  CREATE PDF HERE
-        doc = SimpleDocTemplate(pdf_path)
-        doc.build(content)
-
-        print(" PDF CREATED:", pdf_path)
-
-    except Exception as e:
-        print(" PDF ERROR:", e)
+    doc.build(content)
+    print("PDF path:", pdf_path)
+    print("File exists:", os.path.exists(pdf_path))
 
     return pdf_path
 
@@ -259,7 +248,7 @@ def generate_pdf(project_id, version, data, image_paths):
 
 @app.get("/")
 def home():
-    return {"message": " Manual Generator Running"}
+    return {"message": "🚀 Manual Generator Running"}
 
 
 @app.post("/generate-manual")
@@ -347,50 +336,27 @@ def extract_text(file: UploadFile):
 def extract_sections_from_frs(frs_text: str):
 
     prompt = f"""
-You are a professional technical writer creating a user manual for end users.
+You are reading an FRS document.
 
-Based on the following FRS content, generate user-friendly documentation sections.
+Extract:
+- Title
+- Introduction
+- Purpose
+- Prerequisites
 
-Focus on:
-- Making it easy for a non-technical user to understand
-- Explaining purpose in a practical way
-- Avoid copying exact lines from FRS
-- Write as if guiding a real user
-
-FRS Content:
+FRS:
 {frs_text}
 
-Generate the following sections:
-
-Title:
-- Short and meaningful (max 6 words)
-
-Introduction:
-- 3–4 lines
-- Explain what the application does in simple terms
-- Focus on user benefit
-
-Purpose:
-- 2–3 lines
-- Explain why user would use this feature/system
-
-Prerequisites:
-- Bullet points
-- Mention things user should have before starting (login, access, data, etc.)
-
 Rules:
-- Use clear and natural language
-- Avoid technical jargon
-- Do not sound like AI or documentation template
-- Make it feel like a real product manual
+- Keep short
+- Simple English
+- If not present, return empty
 
-Format strictly as:
+Format:
 Title: ...
 Introduction: ...
 Purpose: ...
-Prerequisites:
-- ...
-- ...
+Prerequisites: ...
 """
 
     output = call_groq(prompt)
@@ -415,13 +381,12 @@ Prerequisites:
     return result
 
 
-
-from fastapi import UploadFile, File, Form
+from fastapi import UploadFile, File
 
 @app.post("/generate-manual-from-frs")
 async def generate_manual_from_frs(
     file: UploadFile = File(...),
-    steps: str = Form(...)
+    steps: str = ""
 ):
 
     # 1. Extract FRS text

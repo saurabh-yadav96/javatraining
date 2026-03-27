@@ -1,11 +1,12 @@
 {
-    "title": "User Manual: Secure User Login System",
-    "introduction": "The FRS (Flexible Registration System) is a secure login feature designed for user authentication. It enables users to access the system safely and efficiently.",
-    "purpose": "The purpose of FRS is to provide a secure and reliable method for users to log into the system using their credentials. This feature aims to protect user identities and maintain the integrity of the system.",
+    "title": "User Manual: PARIVESH Forest Clearance Mobile Application",
+    "introduction": "The PARIVESH Forest Clearance Mobile Application aims to enhance accessibility, transparency, and efficiency in the forest clearance workflow.",
+    "purpose": "To define the functional and non-functional requirements for the development of the PARIVESH Forest Clearance Mobile Application.",
+    "prerequisites": "",
     "steps": [
-        "Click Login button",
-        "Enter username",
-        "Enter password",
-        "Click Submit button"
+        "Click Enter email button",
+        "Click Enter Password button",
+        "Click Enter Captcha button",
+        "Click LOGIN button"
     ]
 }
